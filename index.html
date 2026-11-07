@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0b0b0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CMGS Dialer">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>CMGS Dialer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: one-screen phone app — header, view area, bottom tab bar. Black / gold / silver house palette. */
+:root{
+  --bg:#0b0b0c; --panel:#141416; --panel2:#1c1c20; --line:#2a2a2e;
+  --gold:#c9a24a; --gold-hi:#e8c877; --silver:#c8c9cc; --fg:#f2f2f3; --muted:#8e8f94;
+  --ok:#49b36c; --bad:#d9534f;
+  --body:'Manrope',system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body);
+  padding-top:env(safe-area-inset-top,0px);
+  padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;overflow:hidden;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+input,textarea{font:inherit}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 6px;gap:10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{width:34px;height:34px;border-radius:50%}
+.brand b{font-weight:800;letter-spacing:.02em}
+.brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:12px;color:var(--muted)}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.pill.ok i{background:var(--ok)} .pill.bad i{background:var(--bad)}
+main{flex:1;min-height:0;position:relative}
+.view{position:absolute;inset:0;display:none;flex-direction:column;padding:0 16px;overflow:hidden}
+.view.on{display:flex}
+/* ---- keypad ---- */
+.display{flex:0 0 auto;text-align:center;padding:14px 0 6px;min-height:92px}
+.display .num{font-size:34px;font-weight:700;letter-spacing:.04em;min-height:42px;font-variant-numeric:tabular-nums;word-break:break-all}
+.display .who{color:var(--gold);font-size:13px;min-height:18px}
+.tools{display:flex;justify-content:center;gap:10px;margin:2px 0 8px}
+.fromsel{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--silver);font-size:13px}
+.tools button{padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:13px;color:var(--silver)}
+.keys{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:10px;max-width:340px;width:100%;margin:0 auto;align-content:center}
+.key{border-radius:50%;aspect-ratio:1;max-height:76px;align-self:center;justify-self:center;width:min(100%,76px);
+  background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.key b{font-size:26px;font-weight:600}
+.key small{font-size:9px;letter-spacing:.18em;color:var(--muted);margin-top:3px}
+.key:active{background:var(--panel2);border-color:var(--gold)}
+.callrow{display:grid;grid-template-columns:76px 76px 76px;justify-content:center;gap:10px;padding:10px 0 12px}
+.call{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--ok);color:#fff}
+.call.hang{background:var(--bad)}
+.call svg{width:32px;height:32px}
+.del{width:76px;height:76px;display:flex;align-items:center;justify-content:center;color:var(--silver)}
+/* ---- in-call ---- */
+.incall{position:absolute;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:space-between;padding:40px 16px 24px;z-index:5}
+.incall.on{display:flex}
+.incall .name{font-size:26px;font-weight:700;text-align:center;text-wrap:balance}
+.incall .num{color:var(--muted);font-variant-numeric:tabular-nums}
+.incall .timer{font-size:20px;color:var(--gold);font-variant-numeric:tabular-nums;margin-top:6px}
+.incall .ring{width:120px;height:120px;border-radius:50%;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:800;color:var(--gold);background:var(--panel)}
+.ctrls{display:flex;gap:18px}
+.ctrl{width:64px;height:64px;border-radius:50%;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:var(--silver);gap:4px}
+.ctrl.active{background:var(--gold);color:#111;border-color:var(--gold)}
+.ctrl svg{width:22px;height:22px}
+/* ---- lists ---- */
+.search{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg);margin:10px 0}
+.list{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:12px}
+.row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line)}
+.row .av{width:40px;height:40px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gold);flex:0 0 auto}
+.row .t{flex:1;min-width:0}
+.row .t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .t span{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .go{width:40px;height:40px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto}
+.row .go svg{width:20px;height:20px}
+.tag{font-size:10px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-left:6px}
+.empty{color:var(--muted);text-align:center;padding:30px 10px;line-height:1.6}
+/* ---- tabs ---- */
+nav{display:flex;border-top:1px solid var(--line);background:var(--panel);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted)}
+nav button.on{color:var(--gold)}
+nav svg{width:22px;height:22px}
+/* ---- sheets / login ---- */
+.sheet{position:absolute;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:9}
+.sheet.on{display:flex}
+.card{width:100%;background:var(--panel);border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.card h3{margin:0 0 4px;font-size:17px}
+.card p{margin:0 0 12px;color:var(--muted);font-size:13px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.choices button{padding:11px 8px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);font-size:13px}
+.choices button.on{border-color:var(--gold);color:var(--gold-hi)}
+textarea{width:100%;min-height:70px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);padding:10px;resize:vertical}
+.primary{width:100%;padding:13px;border-radius:12px;background:var(--gold);color:#111;font-weight:800;margin-top:10px}
+.ghost{width:100%;padding:11px;border-radius:12px;color:var(--muted);margin-top:4px}
+.login{position:absolute;inset:0;background:var(--bg);display:none;flex-direction:column;justify-content:center;padding:24px;gap:12px;z-index:20}
+.login.on{display:flex}
+.login img{width:110px;height:110px;border-radius:50%;margin:0 auto 6px}
+.login h1{margin:0;text-align:center;font-size:22px}
+.login p{margin:0 0 8px;text-align:center;color:var(--muted);font-size:13px}
+.login input{padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.err{color:var(--bad);font-size:13px;min-height:18px;text-align:center}
+.toast{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90%}
+.toast.on{opacity:1}
+.foot{color:var(--muted);font-size:11px;text-align:center;letter-spacing:.14em;text-transform:uppercase;padding:6px 0 2px}
+.txt{padding:14px 2px;display:flex;flex-direction:column;gap:8px}
+.txt label{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+.txt .field{padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);font-size:17px}
+.txt textarea{min-height:120px}
+.txt .count{color:var(--muted);font-size:12px;text-align:right}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="login on" id="login">
+  <img src="icon-192.png" alt="">
+  <h1>CMGS Dialer</h1>
+  <p>Business calls go out on the office line and are logged. Sign in with your CMGS account.</p>
+  <input id="email" type="email" placeholder="Email" autocomplete="username" inputmode="email">
+  <input id="pass" type="password" placeholder="Password" autocomplete="current-password">
+  <div class="err" id="loginErr"></div>
+  <button class="primary" id="loginBtn">Sign in</button>
+  <div class="foot">Growth · Opportunity · Transparency · Trust</div>
+</div>
+
+<header class="hdr">
+  <div class="brand"><img src="icon-192.png" alt=""><div><b>CMGS Dialer</b><small id="who">Office line</small></div></div>
+  <span class="pill" id="status"><i></i><span>Connecting…</span></span>
+</header>
+
+<main>
+  <!-- KEYPAD -->
+  <section class="view on" id="v-keypad">
+    <div class="display"><div class="num" id="num"></div><div class="who" id="match"></div></div>
+    <div class="tools">
+      <button id="pasteBtn">Paste</button>
+      <button id="contactPick" hidden>Phone contacts</button>
+      <button id="clearBtn">Clear</button>
+      <select id="fromSel" class="fromsel" aria-label="Show as"><option value="+18888610310">Show 888 office</option><option value="+14243534340">Show 424 personal</option></select>
+    </div>
+    <div class="keys" id="keys"></div>
+    <div class="callrow">
+      <span></span>
+      <button class="call" id="callBtn" aria-label="Call"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1L6.6 10.8z"/></svg></button>
+      <button class="del" id="delBtn" aria-label="Delete"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4h12v16H9l-7-8 7-8z"/><path d="M13 9l5 6M18 9l-5 6"/></svg></button>
+    </div>
+  </section>
+
+  <!-- TEXT -->
+  <section class="view" id="v-text">
+    <div class="txt">
+      <label>To</label>
+      <input class="field" id="smsTo" type="tel" inputmode="tel" placeholder="(310) 555-0100" autocomplete="off">
+      <div class="who" id="smsName"></div>
+      <label>Message</label>
+      <textarea id="smsBody" maxlength="1500" placeholder="Type your text"></textarea>
+      <div class="count"><span id="smsCount">0</span> / 1500</div>
+      <button class="primary" id="smsSend">Send text</button>
+      <div class="err" id="smsErr"></div>
+    </div>
+  </section>
+
+  <!-- CONTACTS -->
+  <section class="view" id="v-contacts">
+    <input class="search" id="csearch" placeholder="Search contacts" autocomplete="off">
+    <div class="list" id="clist"><div class="empty">Loading contacts…</div></div>
+  </section>
+
+  <!-- RECENT -->
+  <section class="view" id="v-recent">
+    <div class="list" id="rlist" style="margin-top:10px"><div class="empty">Loading recent calls…</div></div>
+  </section>
+
+  <!-- IN CALL -->
+  <div class="incall" id="incall">
+    <div style="text-align:center">
+      <div class="name" id="icName">Calling…</div>
+      <div class="num" id="icNum"></div>
+      <div class="timer" id="icTimer">Connecting</div>
+    </div>
+    <div class="ring" id="icAv">C8</div>
+    <div>
+      <div class="ctrls">
+        <button class="ctrl" id="muteBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V22h2v-3.1A7 7 0 0 0 19 12h-2z"/></svg>Mute</button>
+        <button class="ctrl" id="padBtn"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>Keypad</button>
+        <button class="ctrl" id="spkBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>Speaker</button>
+      </div>
+      <div class="keys" id="dtmf" style="display:none;margin-top:14px;max-width:280px"></div>
+      <div class="callrow" style="grid-template-columns:76px"><button class="call hang" id="hangBtn" aria-label="Hang up"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 9c-1.6 0-3.1.25-4.5.7v3.1a1 1 0 0 1-.56.9 11.5 11.5 0 0 0-2.7 1.9 1 1 0 0 1-1.4 0L.75 13.5a1 1 0 0 1 0-1.4C3.6 9.3 7.6 7.5 12 7.5s8.4 1.8 11.25 4.6a1 1 0 0 1 0 1.4l-2.1 2.1a1 1 0 0 1-1.4 0 11.5 11.5 0 0 0-2.7-1.9 1 1 0 0 1-.55-.9v-3.1C15.1 9.25 13.6 9 12 9z"/></svg></button></div>
+    </div>
+  </div>
+
+  <!-- AFTER-CALL SHEET -->
+  <div class="sheet" id="sheet">
+    <div class="card">
+      <h3 id="shTitle">Log this call</h3>
+      <p id="shSub"></p>
+      <div class="choices" id="outcomes"></div>
+      <textarea id="notes" placeholder="Notes (what was said, next step)"></textarea>
+      <button class="primary" id="saveLog">Save to Call Log</button>
+      <button class="ghost" id="skipLog">Skip</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</main>
+
+<nav>
+  <button class="on" data-v="keypad"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>Keypad</button>
+  <button data-v="text"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/></svg>Text</button>
+  <button data-v="contacts"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3.3 0-8 1.7-8 4v2h16v-2c0-2.3-4.7-4-8-4z"/></svg>Contacts</button>
+  <button data-v="recent"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9L8.8 12H6a7 7 0 1 1 2 4.9l-1.4 1.4A9 9 0 1 0 13 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2.1V8H12z"/></svg>Recent</button>
+  <button id="signout"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 13v-2H7V8l-5 4 5 4v-3h9zm3-10H9a2 2 0 0 0-2 2v3h2V5h10v14H9v-3H7v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg>Sign out</button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.11.1/dist/twilio.min.js"></script>
+<script>
+const SUPABASE_URL = "https://szjnmincvbaqoujseaac.supabase.co";
+const SUPABASE_ANON = "sb_publishable_4bgW84SXjMdQlxS0np_H-A_0G7rJzU0";
+const FN = SUPABASE_URL + "/functions/v1/";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const $ = (id) => document.getElementById(id);
+let device = null, activeCall = null, callStart = 0, timerId = null, contacts = [], current = null, me = null;
+
+/* ---------- helpers ---------- */
+function toast(msg, ms = 2200) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("on"), ms); }
+function setStatus(cls, text) { const s = $("status"); s.className = "pill " + cls; s.querySelector("span").textContent = text; }
+function digitsOnly(s) { return (s || "").replace(/[^\d+*#]/g, ""); }
+function toE164(s) { let d = (s || "").replace(/[^\d+]/g, ""); if (d.startsWith("+")) return d; d = d.replace(/^1(?=\d{10}$)/, ""); return d.length === 10 ? "+1" + d : (d.length > 10 ? "+" + d : ""); }
+function fmt(s) { const d = (s || "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, ""); if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`; if (d.length < 10) return d.replace(/(\d{3})(\d{0,3})(\d{0,4})/, (m,a,b,c) => a + (b ? " " + b : "") + (c ? "-" + c : "")); return s; }
+function initials(n) { return (n || "?").split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase(); }
+async function authed(path, opts = {}) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error("Not signed in");
+  const r = await fetch(FN + path, { ...opts, headers: { Authorization: "Bearer " + session.access_token, apikey: SUPABASE_ANON, "Content-Type": "application/json", ...(opts.headers || {}) } });
+  const b = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(b.error || ("HTTP " + r.status));
+  return b;
+}
+
+/* ---------- keypad ---------- */
+const KEYS = [["1",""],["2","ABC"],["3","DEF"],["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],["*",""],["0","+"],["#",""]];
+function buildKeys(el, onKey) {
+  el.innerHTML = "";
+  for (const [k, l] of KEYS) {
+    const b = document.createElement("button"); b.className = "key"; b.innerHTML = `<b>${k}</b><small>${l}</small>`;
+    let held = false;
+    b.addEventListener("click", () => { if (!held) onKey(k); held = false; });
+    if (k === "0") { let t; b.addEventListener("pointerdown", () => { t = setTimeout(() => { held = true; onKey("+"); }, 500); }); b.addEventListener("pointerup", () => clearTimeout(t)); b.addEventListener("pointerleave", () => clearTimeout(t)); }
+    el.appendChild(b);
+  }
+}
+function setNum(v) { current = digitsOnly(v); $("num").textContent = fmt(current) || ""; const e = toE164(current); const m = e && contacts.find(c => toE164(c.phone) === e); $("match").textContent = m ? `${m.name}${m.company ? " · " + m.company : ""}` : ""; }
+buildKeys($("keys"), (k) => setNum((current || "") + k));
+buildKeys($("dtmf"), (k) => activeCall && activeCall.sendDigits(k));
+$("delBtn").onclick = () => setNum((current || "").slice(0, -1));
+$("clearBtn").onclick = () => setNum("");
+$("pasteBtn").onclick = async () => { try { const t = await navigator.clipboard.readText(); if (digitsOnly(t)) setNum(t); else toast("Clipboard has no number"); } catch { toast("Allow clipboard access, or long-press the number display to paste"); } };
+$("num").addEventListener("paste", (e) => { setNum(e.clipboardData.getData("text")); e.preventDefault(); });
+if ("contacts" in navigator && "select" in navigator.contacts) {
+  $("contactPick").hidden = false;
+  $("contactPick").onclick = async () => { try { const [c] = await navigator.contacts.select(["name", "tel"], { multiple: false }); if (c && c.tel && c.tel[0]) { setNum(c.tel[0]); $("match").textContent = (c.name || [])[0] || ""; } } catch {} };
+}
+const FROM_NUMS = ["+18888610310", "+14243534340"];
+function fromNumber() { try { const v = localStorage.getItem("cmgs_from"); if (FROM_NUMS.includes(v)) return v; } catch {} return FROM_NUMS[0]; }
+$("fromSel").value = fromNumber();
+$("fromSel").onchange = () => { try { localStorage.setItem("cmgs_from", $("fromSel").value); } catch {} toast("Calls and texts will show " + ($("fromSel").value === FROM_NUMS[0] ? "888 office" : "424 personal")); };
+$("callBtn").onclick = () => placeCall(current, $("match").textContent.split(" · ")[0]);
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button[data-v]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + b.dataset.v));
+  if (b.dataset.v === "recent") loadRecent();
+  if (b.dataset.v === "text") prefillText();
+});
+$("signout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+/* ---------- text ---------- */
+function prefillText() { if (!$("smsTo").value && current) $("smsTo").value = fmt(current); }
+$("smsTo").addEventListener("input", () => { const e = toE164($("smsTo").value); const m = e && contacts.find(c => toE164(c.phone) === e); $("smsName").textContent = m ? m.name : ""; });
+$("smsBody").addEventListener("input", () => { $("smsCount").textContent = $("smsBody").value.length; });
+$("smsSend").onclick = async () => {
+  const to = toE164($("smsTo").value);
+  const body = $("smsBody").value.trim();
+  $("smsErr").textContent = "";
+  if (!to) { $("smsErr").textContent = "Enter a 10-digit number"; return; }
+  if (!body) { $("smsErr").textContent = "Type a message first"; return; }
+  const name = $("smsName").textContent;
+  $("smsSend").disabled = true; $("smsSend").textContent = "Sending…";
+  try {
+    const r = await authed("dialer-sms", { method: "POST", body: JSON.stringify({ to, body, contactName: name, from: fromNumber() }) });
+    toast(`Text ${r.status || "sent"}`);
+    $("smsBody").value = ""; $("smsCount").textContent = "0";
+  } catch (e) { $("smsErr").textContent = e.message; }
+  finally { $("smsSend").disabled = false; $("smsSend").textContent = "Send text"; }
+};
+
+/* ---------- contacts ---------- */
+async function loadContacts() {
+  try { const r = await authed("dialer-data?what=contacts"); contacts = r.contacts || []; renderContacts(); }
+  catch (e) { $("clist").innerHTML = `<div class="empty">Couldn't load contacts.<br>${e.message}</div>`; }
+}
+function renderContacts() {
+  const q = ($("csearch").value || "").toLowerCase();
+  const rows = contacts.filter(c => !q || (c.name + " " + (c.company || "") + " " + c.phone).toLowerCase().includes(q));
+  $("clist").innerHTML = rows.length ? "" : `<div class="empty">No contacts${q ? " match" : " yet"}.<br>Contacts come from Airtable (Inquiries and Field Outreach).</div>`;
+  for (const c of rows) {
+    const d = document.createElement("div"); d.className = "row";
+    d.innerHTML = `<div class="av">${initials(c.name)}</div><div class="t"><b>${c.name}<span class="tag">${c.source}</span></b><span>${c.company ? c.company + " · " : ""}${fmt(c.phone)}${c.status ? " · " + c.status : ""}</span></div><button class="go" aria-label="Call ${c.name}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1L6.6 10.8z"/></svg></button>`;
+    d.querySelector(".go").onclick = () => placeCall(c.phone, c.name);
+    $("clist").appendChild(d);
+  }
+}
+$("csearch").addEventListener("input", renderContacts);
+
+/* ---------- recent ---------- */
+async function loadRecent() {
+  $("rlist").innerHTML = `<div class="empty">Loading recent calls…</div>`;
+  try {
+    const r = await authed("dialer-data?what=recent"); const calls = r.calls || [];
+    $("rlist").innerHTML = calls.length ? "" : `<div class="empty">No calls logged yet. Every call you place here shows up in Airtable → Call Log.</div>`;
+    for (const c of calls) {
+      const d = document.createElement("div"); d.className = "row";
+      const when = c["Started At"] ? new Date(c["Started At"]).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+      const dur = c["Duration (sec)"] ? ` · ${Math.floor(c["Duration (sec)"] / 60)}:${String(c["Duration (sec)"] % 60).padStart(2, "0")}` : "";
+      d.innerHTML = `<div class="av">${initials(c["Contact Name"] || "#")}</div><div class="t"><b>${c["Contact Name"] || fmt(c.To || "")}</b><span>${when}${dur} · ${c.Status || ""}${c.Outcome ? " · " + c.Outcome : ""}</span></div><button class="go" aria-label="Call back"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1L6.6 10.8z"/></svg></button>`;
+      d.querySelector(".go").onclick = () => placeCall(c.To, c["Contact Name"]);
+      $("rlist").appendChild(d);
+    }
+  } catch (e) { $("rlist").innerHTML = `<div class="empty">Couldn't load recent calls.<br>${e.message}</div>`; }
+}
+
+/* ---------- twilio device ---------- */
+async function initDevice() {
+  setStatus("", "Connecting…");
+  try {
+    const t = await authed("dialer-token", { method: "POST", body: "{}" });
+    me = t;
+    $("who").textContent = `${t.displayName} · ${fmt(t.callerId) || "office line"}`;
+    if (device) { device.updateToken(t.token); setStatus("ok", "Ready"); return; }
+    device = new Twilio.Device(t.token, { codecPreferences: ["opus", "pcmu"], closeProtection: true, logLevel: 1 });
+    device.on("registered", () => setStatus("ok", "Ready"));
+    device.on("unregistered", () => setStatus("", "Offline"));
+    device.on("error", (e) => { setStatus("bad", "Error"); toast(e.message || "Device error", 4000); });
+    device.on("tokenWillExpire", async () => { try { const n = await authed("dialer-token", { method: "POST", body: "{}" }); device.updateToken(n.token); } catch {} });
+    device.on("incoming", (call) => { incomingCall(call); });
+    await device.register();
+    setStatus("ok", "Ready");
+  } catch (e) {
+    setStatus("bad", "Not ready");
+    toast(e.message, 6000);
+  }
+}
+function incomingCall(call) {
+  // Inbound to this app is only possible once the number's inbound routing points here; shown for completeness.
+  showInCall(call.parameters.From || "Incoming", call.parameters.From, call);
+  $("icTimer").textContent = "Incoming — tap green to answer";
+  const a = $("callBtn"); a.onclick = () => { call.accept(); wireCall(call); };
+  call.on("cancel", endCallUI); call.on("disconnect", endCallUI);
+}
+function showInCall(name, num, call) {
+  $("icName").textContent = name || fmt(num) || "Calling…";
+  $("icNum").textContent = name ? fmt(num) : "";
+  $("icAv").textContent = initials(name || "C8");
+  $("icTimer").textContent = "Connecting";
+  $("incall").classList.add("on");
+  activeCall = call;
+}
+function wireCall(call) {
+  call.on("accept", () => { callStart = Date.now(); clearInterval(timerId); timerId = setInterval(() => { const s = Math.floor((Date.now() - callStart) / 1000); $("icTimer").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }, 500); });
+  call.on("ringing", () => { $("icTimer").textContent = "Ringing…"; });
+  call.on("disconnect", () => endCallUI(call));
+  call.on("cancel", () => endCallUI(call));
+  call.on("reject", () => endCallUI(call));
+  call.on("error", (e) => { toast(e.message || "Call error", 4000); endCallUI(call); });
+  $("muteBtn").onclick = () => { const m = !call.isMuted(); call.mute(m); $("muteBtn").classList.toggle("active", m); };
+}
+async function placeCall(number, name) {
+  const to = toE164(number);
+  if (!to) { toast("Enter a full 10-digit number"); return; }
+  if (!device) { await initDevice(); if (!device) return; }
+  try {
+    const call = await device.connect({ params: { To: to, contact: name || "", callerId: fromNumber() } });
+    call._cmgs = { to, name: name || "", startedAt: new Date().toISOString() };
+    showInCall(name, to, call);
+    wireCall(call);
+  } catch (e) { toast(e.message || "Couldn't place call", 4000); }
+}
+$("hangBtn").onclick = () => { if (activeCall) activeCall.disconnect(); else endCallUI(); };
+$("padBtn").onclick = () => { const d = $("dtmf"); d.style.display = d.style.display === "none" ? "grid" : "none"; $("padBtn").classList.toggle("active"); };
+$("spkBtn").onclick = async () => {
+  // Switch output to a speaker-ish device when the browser exposes one (Android Chrome); otherwise use the phone's own speaker toggle.
+  try { const outs = Array.from(device.audio.availableOutputDevices.values()); const spk = outs.find(d => /speaker/i.test(d.label)); if (spk) { await device.audio.speakerDevices.set(spk.deviceId); $("spkBtn").classList.add("active"); } else toast("Use your phone's speaker control"); } catch { toast("Use your phone's speaker control"); }
+};
+function endCallUI(call) {
+  clearInterval(timerId); $("incall").classList.remove("on"); $("dtmf").style.display = "none"; $("padBtn").classList.remove("active"); $("muteBtn").classList.remove("active");
+  const c = call && call._cmgs; activeCall = null;
+  if (c) { const sid = call.parameters && call.parameters.CallSid; const secs = callStart ? Math.round((Date.now() - callStart) / 1000) : 0; callStart = 0; openSheet({ ...c, sid, secs }); }
+}
+
+/* ---------- after-call sheet ---------- */
+const OUTCOMES = ["Connected", "Left Voicemail", "No Answer", "Meeting Set", "Follow Up Needed", "Wrong Number", "Not Interested"];
+let pendingLog = null, chosen = "";
+function openSheet(info) {
+  pendingLog = info; chosen = info.secs > 20 ? "Connected" : "No Answer";
+  $("shTitle").textContent = info.name ? `Log call with ${info.name}` : `Log call to ${fmt(info.to)}`;
+  $("shSub").textContent = info.secs ? `Talked ${Math.floor(info.secs / 60)}:${String(info.secs % 60).padStart(2, "0")}` : "Not answered";
+  $("notes").value = "";
+  const o = $("outcomes"); o.innerHTML = "";
+  for (const x of OUTCOMES) { const b = document.createElement("button"); b.textContent = x; b.classList.toggle("on", x === chosen); b.onclick = () => { chosen = x; o.querySelectorAll("button").forEach(y => y.classList.toggle("on", y === b)); }; o.appendChild(b); }
+  $("sheet").classList.add("on");
+}
+$("skipLog").onclick = () => { $("sheet").classList.remove("on"); pendingLog = null; };
+$("saveLog").onclick = async () => {
+  if (!pendingLog) return;
+  const p = pendingLog;
+  try {
+    await authed("dialer-log", { method: "POST", body: JSON.stringify({ callSid: p.sid || ("local-" + Date.now()), to: p.to, from: me && me.callerId, contactName: p.name, startedAt: p.startedAt, outcome: chosen, notes: $("notes").value, direction: "Outbound" }) });
+    toast("Saved to Call Log");
+  } catch (e) { toast("Couldn't save: " + e.message, 4000); }
+  $("sheet").classList.remove("on"); pendingLog = null;
+};
+
+/* ---------- auth ---------- */
+$("loginBtn").onclick = async () => {
+  $("loginErr").textContent = ""; $("loginBtn").disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("pass").value });
+  $("loginBtn").disabled = false;
+  if (error) { $("loginErr").textContent = error.message; return; }
+  start();
+};
+$("pass").addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); });
+async function start() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { $("login").classList.add("on"); return; }
+  $("login").classList.remove("on");
+  await initDevice();
+  loadContacts();
+}
+start();
+</script>
+</body>
+</html>
