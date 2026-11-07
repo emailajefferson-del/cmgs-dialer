@@ -48,12 +48,27 @@ main{flex:1;min-height:0;position:relative}
 .tools{display:flex;justify-content:center;gap:10px;margin:2px 0 8px}
 .fromsel{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--silver);font-size:13px}
 .tools button{padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:13px;color:var(--silver)}
-.keys{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:10px;max-width:340px;width:100%;margin:0 auto;align-content:center}
+.keys{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:10px;max-width:340px;width:100%;margin:0 auto;align-content:center}
 .key{border-radius:50%;aspect-ratio:1;max-height:76px;align-self:center;justify-self:center;width:min(100%,76px);
   background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
 .key b{font-size:26px;font-weight:600}
 .key small{font-size:9px;letter-spacing:.18em;color:var(--muted);margin-top:3px}
 .key:active{background:var(--panel2);border-color:var(--gold)}
+@media (max-height:900px){
+  .hdr{padding:6px 16px 4px}
+  .display{min-height:60px;padding:4px 0 0}
+  .display .num{font-size:28px;min-height:32px}
+  .tools{margin:0 0 4px;flex-wrap:wrap;gap:6px}
+  .tools button,.fromsel{padding:6px 12px;font-size:12px}
+  .keys{gap:5px}
+  .key{max-height:52px;width:min(100%,52px)}
+  .key b{font-size:20px}
+  .key small{font-size:8px}
+  .callrow{grid-template-columns:56px 56px 56px;gap:10px;padding:4px 0 6px}
+  .call,.del{width:56px;height:56px}
+  .call svg{width:24px;height:24px}
+}
+.tools{flex-wrap:wrap}
 .callrow{display:grid;grid-template-columns:76px 76px 76px;justify-content:center;gap:10px;padding:10px 0 12px}
 .call{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--ok);color:#fff}
 .call.hang{background:var(--bad)}
